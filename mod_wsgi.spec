@@ -163,7 +163,7 @@ ln -s %{_bindir}/mod_wsgi-express-2 $RPM_BUILD_ROOT%{_bindir}/mod_wsgi-express
 %endif
 
 %changelog
-* Sat Apr 01 2023 CasjaysDev <rpm-dev@casjaysdev.com> 4.9.0-2
+* Sat Apr 01 2023 CasjaysDev <rpm-dev@casjaysdev.pro> 4.9.0-2
 - Added symlink to %{_httpd_moddir}/mod_wsgi.so
 
 * Wed Aug 04 2021 Miro Hrončok <mhroncok@redhat.com> - 4.9.0-1
