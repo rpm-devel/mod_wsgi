@@ -30,6 +30,7 @@ Patch1:         mod_wsgi-4.5.20-exports.patch
 BuildRequires:  httpd-devel
 BuildRequires:  gcc
 BuildRequires:  make
+Provides:       mod_wsgi = %{version}-%{release}
 
 # Suppress auto-provides for module DSO
 %{?filter_provides_in: %filter_provides_in %{_httpd_moddir}/.*\.so$}
