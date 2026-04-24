@@ -6,19 +6,14 @@
 %{!?_httpd_modconfdir: %{expand: %%global _httpd_modconfdir %%{_sysconfdir}/httpd/conf.d}}
 %{!?_httpd_moddir:    %{expand: %%global _httpd_moddir    %%{_libdir}/httpd/modules}}
 
-%if 0%{?fedora} || 0%{?rhel} > 7
 %bcond_without python3
 %bcond_with python2
-%else
-%bcond_with python3
-%bcond_without python2
-%endif
 
 
 
 Name:           mod_wsgi
-Version:        4.9.0
-Release:        2%{?dist}
+Version:        5.0.2
+Release:        1%{?dist}
 Summary:        A WSGI interface for Python web applications in Apache
 License:        ASL 2.0
 URL:            https://modwsgi.readthedocs.io/
@@ -164,6 +159,10 @@ ln -s %{_bindir}/mod_wsgi-express-2 $RPM_BUILD_ROOT%{_bindir}/mod_wsgi-express
 %endif
 
 %changelog
+* Fri Apr 24 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 5.0.2-1
+- Update to 5.0.2
+- Modernize spec for EL10, switch to python3
+
 * Sat Apr 01 2023 CasjaysDev <rpm-dev@casjaysdev.pro> 4.9.0-2
 - Added symlink to %{_httpd_moddir}/mod_wsgi.so
 
