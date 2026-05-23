@@ -109,15 +109,15 @@ popd
 %if %{with python3}
 pushd py3build
 %make_install LIBEXECDIR=%{_httpd_moddir}
-#mv  $RPM_BUILD_ROOT%{_httpd_moddir}/mod_wsgi{,_python3}.so
-#ln -sf mod_wsgi_python3.so $RPM_BUILD_ROOT%{_httpd_moddir}/mod_wsgi.so
+#mv  %{buildroot}%{_httpd_moddir}/mod_wsgi{,_python3}.so
+#ln -sf mod_wsgi_python3.so %{buildroot}%{_httpd_moddir}/mod_wsgi.so
 
-install -d -m 755 $RPM_BUILD_ROOT%{_httpd_modconfdir}
+install -d -m 755 %{buildroot}%{_httpd_modconfdir}
 # httpd >= 2.4.x
-install -p -m 644 %{SOURCE2} $RPM_BUILD_ROOT%{_httpd_modconfdir}/10-wsgi-python3.conf
+install -p -m 644 %{SOURCE2} %{buildroot}%{_httpd_modconfdir}/10-wsgi-python3.conf
 
 %py3_install
-mv $RPM_BUILD_ROOT%{_bindir}/mod_wsgi-express{,-3}
+mv %{buildroot}%{_bindir}/mod_wsgi-express{,-3}
 popd
 
 %endif
@@ -126,13 +126,13 @@ popd
 %if %{with python2}
 %make_install LIBEXECDIR=%{_httpd_moddir}
 
-install -d -m 755 $RPM_BUILD_ROOT%{_httpd_modconfdir}
+install -d -m 755 %{buildroot}%{_httpd_modconfdir}
 # httpd >= 2.4.x
-install -p -m 644 %{SOURCE1} $RPM_BUILD_ROOT%{_httpd_modconfdir}/10-wsgi.conf
+install -p -m 644 %{SOURCE1} %{buildroot}%{_httpd_modconfdir}/10-wsgi.conf
 
 %py2_install
-mv $RPM_BUILD_ROOT%{_bindir}/mod_wsgi-express{,-2}
-ln -s %{_bindir}/mod_wsgi-express-2 $RPM_BUILD_ROOT%{_bindir}/mod_wsgi-express
+mv %{buildroot}%{_bindir}/mod_wsgi-express{,-2}
+ln -s %{_bindir}/mod_wsgi-express-2 %{buildroot}%{_bindir}/mod_wsgi-express
 %endif
 
 %if %{with python2}
@@ -159,6 +159,9 @@ ln -s %{_bindir}/mod_wsgi-express-2 $RPM_BUILD_ROOT%{_bindir}/mod_wsgi-express
 %endif
 
 %changelog
+* Fri May 22 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 5.0.2-1
+- Fix spec violations: use %{buildroot}, %global for constants
+
 * Fri Apr 24 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 5.0.2-1
 - Update to 5.0.2
 - Modernize spec for EL10, switch to python3
