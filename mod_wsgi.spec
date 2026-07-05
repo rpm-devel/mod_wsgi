@@ -12,15 +12,15 @@
 
 
 Name:           mod_wsgi
-Version:        5.0.2
+Version:        6.0.5
 Release:        1%{?dist}
 Summary:        A WSGI interface for Python web applications in Apache
-License:        ASL 2.0
+License:        Apache-2.0
 URL:            https://modwsgi.readthedocs.io/
-Source0:        https://github.com/GrahamDumpleton/mod_wsgi/archive/%{version}.tar.gz#/mod_wsgi-%{version}.tar.gz
+ExclusiveArch:  x86_64 aarch64
+Source0:        https://github.com/GrahamDumpleton/mod_wsgi/archive/refs/tags/%{version}.tar.gz
 Source1:        wsgi.conf
 Source2:        wsgi-python3.conf
-Patch1:         mod_wsgi-4.5.20-exports.patch
 
 BuildRequires:  httpd-devel
 BuildRequires:  gcc
@@ -109,8 +109,6 @@ popd
 %if %{with python3}
 pushd py3build
 %make_install LIBEXECDIR=%{_httpd_moddir}
-#mv  %{buildroot}%{_httpd_moddir}/mod_wsgi{,_python3}.so
-#ln -sf mod_wsgi_python3.so %{buildroot}%{_httpd_moddir}/mod_wsgi.so
 
 install -d -m 755 %{buildroot}%{_httpd_modconfdir}
 # httpd >= 2.4.x
@@ -159,6 +157,14 @@ ln -s %{_bindir}/mod_wsgi-express-2 %{buildroot}%{_bindir}/mod_wsgi-express
 %endif
 
 %changelog
+* Sat Jul 05 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.5-1
+- Update to 6.0.5 (Source0 refs/tags/ URL verified 302→200)
+- Drop Patch1 mod_wsgi-4.5.20-exports.patch (stale, was for 4.5.20)
+- Remove commented-out mv/ln lines in %%install
+
+* Thu Jul 03 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 5.0.2-1
+- SPDX: ASL 2.0 → Apache-2.0; add ExclusiveArch: x86_64 aarch64
+
 * Fri May 22 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 5.0.2-1
 - Fix spec violations: use %{buildroot}, %global for constants
 
