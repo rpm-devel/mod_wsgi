@@ -158,6 +158,22 @@ ln -s %{_bindir}/mod_wsgi-express-2 %{buildroot}%{_bindir}/mod_wsgi-express
 
 %changelog
 * Sat Jul 05 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.5-1
+- Multi-distro audit: ExclusiveArch already correct (x86_64 aarch64), no
+  stray BuildArch lines found
+- openSUSE/SLES diverges on Apache dev package (apache2-devel vs
+  httpd-devel), apxs binary (apxs2 vs apxs), module dir
+  (/usr/lib/apache2 vs %%{_httpd_moddir}), and conf dir
+  (/etc/apache2/conf.d vs %%{_httpd_modconfdir}) - verified via web search
+- Not guarded: fixing only the BuildRequires name would leave _httpd_apxs,
+  _httpd_moddir, _httpd_confdir, and the httpd-mmn Requires pointed at
+  nonexistent RHEL-style paths on SUSE, producing a spec that looks
+  SUSE-compatible but fails to build/install correctly; a correct SUSE
+  port requires restructuring these paths, which is out of scope for a
+  simple package-name guard
+- python3-devel base name confirmed identical on SUSE; this spec's
+  python%%{python3_pkgversion}-devel macro pattern is unaffected
+
+* Sat Jul 05 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.5-1
 - Update to 6.0.5 (Source0 refs/tags/ URL verified 302→200)
 - Drop Patch1 mod_wsgi-4.5.20-exports.patch (stale, was for 4.5.20)
 - Remove commented-out mv/ln lines in %%install
