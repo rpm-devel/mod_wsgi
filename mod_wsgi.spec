@@ -12,13 +12,17 @@
 
 
 Name:           mod_wsgi
-Version:        6.0.5
+Version:        6.0.6
 Release:        1%{?dist}
 Summary:        A WSGI interface for Python web applications in Apache
 License:        Apache-2.0
 URL:            https://modwsgi.readthedocs.io/
 ExclusiveArch:  x86_64 aarch64
-Source0:        https://github.com/GrahamDumpleton/mod_wsgi/archive/refs/tags/%{version}.tar.gz
+# Upstream switched from bare-version tags (e.g. "6.0.5") to prefixed
+# tags (e.g. "mod_wsgi-6.0.6") after 6.0.5 -- the old Source0 404s.
+# GitHub's archive naming for a "mod_wsgi-6.0.6" tag on the "mod_wsgi"
+# repo produces mod_wsgi-mod_wsgi-6.0.6/, hence the %%autosetup -n below.
+Source0:        https://github.com/GrahamDumpleton/mod_wsgi/archive/refs/tags/%{name}-%{version}.tar.gz
 Source1:        wsgi.conf
 Source2:        wsgi-python3.conf
 
@@ -61,7 +65,13 @@ Obsoletes: mod_wsgi < %{version}-%{release}
 %package -n python%{python3_pkgversion}-%{name}
 Summary:        %summary
 Requires:       httpd-mmn = %{_httpd_mmn}
-BuildRequires:  python%{python3_pkgversion}-devel, python%{python3_pkgversion}-sphinx, python%{python3_pkgversion}-sphinx_rtd_theme
+# >= 3.10 is a real upstream requirement, not just this org's minimum --
+# src/server/wsgi_python.h #error's on Python < 3.10.0. AlmaLinux 8's
+# platform-python (3.6) and AlmaLinux 9's default python3 (3.9) both
+# predate that, so this version pin turns the incompatibility into a
+# clean "nothing provides" dependency failure instead of a mid-compile
+# fatal error.
+BuildRequires:  python%{python3_pkgversion}-devel >= 3.10, python%{python3_pkgversion}-sphinx, python%{python3_pkgversion}-sphinx_rtd_theme
 BuildRequires:  python%{python3_pkgversion}-setuptools python%{python3_pkgversion}-babel python%{python3_pkgversion}-pygments python%{python3_pkgversion}-docutils
 %if !%{with python2}
 Provides: mod_wsgi = %{version}-%{release}
@@ -74,7 +84,7 @@ Obsoletes: mod_wsgi < %{version}-%{release}
 %endif
 
 %prep
-%autosetup -p1 -n %{name}-%{version}
+%autosetup -p1 -n %{name}-%{name}-%{version}
 
 : Python2=%{with python2} Python3=%{with python3}
 
