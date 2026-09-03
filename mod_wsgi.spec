@@ -19,7 +19,21 @@
 %bcond_without python3
 %bcond_with python2
 
-
+# el8's default python3 is 3.6 and el9's is 3.9 — both below the 3.10 floor
+# enforced by upstream. AppStream provides python3.11 on both el8 and el9;
+# use that instead of the platform default.
+%if 0%{?rhel} && 0%{?rhel} <= 9
+%global python3_pkgversion 3.11
+# On el8, python3.11-devel (AppStream) does not ship RPM macros that
+# override %%{__python3}, so %%py3_build/%%py3_install still resolve to
+# /usr/libexec/platform-python (3.6).  Override all three macros so every
+# %%py3_* step, the --with-python configure arg, and %%{python3_sitearch}
+# in %%files all target python3.11.  On el9, python3.11-devel pulls in
+# python3.11-rpm-macros which does this automatically; setting it here
+# explicitly is harmless (idempotent).
+%global __python3 /usr/bin/python%{python3_pkgversion}
+%global python3_sitearch %(%{__python3} -c "import sysconfig; print(sysconfig.get_path('platlib', vars={'platbase': '/usr', 'base': '/usr'}))")
+%endif
 
 Name:           mod_wsgi
 Version:        6.0.6
@@ -85,8 +99,15 @@ Requires:       httpd-mmn = %{_httpd_mmn}
 # predate that, so this version pin turns the incompatibility into a
 # clean "nothing provides" dependency failure instead of a mid-compile
 # fatal error.
-BuildRequires:  python%{python3_pkgversion}-devel >= 3.10, python%{python3_pkgversion}-sphinx, python%{python3_pkgversion}-sphinx_rtd_theme
-BuildRequires:  python%{python3_pkgversion}-setuptools python%{python3_pkgversion}-babel python%{python3_pkgversion}-pygments python%{python3_pkgversion}-docutils
+BuildRequires:  python%{python3_pkgversion}-devel >= 3.10
+BuildRequires:  python%{python3_pkgversion}-setuptools
+# sphinx and its friends (babel, pygments, docutils, sphinx_rtd_theme) are only
+# packaged for the platform python3 on el8/el9 — the versioned python3.11-sphinx
+# etc. packages do not exist. Skip docs on el8/el9; build them on el10+ and Fedora.
+%if !(0%{?rhel} && 0%{?rhel} <= 9)
+BuildRequires:  python%{python3_pkgversion}-sphinx, python%{python3_pkgversion}-sphinx_rtd_theme
+BuildRequires:  python%{python3_pkgversion}-babel python%{python3_pkgversion}-pygments python%{python3_pkgversion}-docutils
+%endif
 %if !%{with python2}
 Provides: mod_wsgi = %{version}-%{release}
 Provides: mod_wsgi%{?_isa} = %{version}-%{release}
@@ -103,7 +124,8 @@ Obsoletes: mod_wsgi < %{version}-%{release}
 : Python2=%{with python2} Python3=%{with python3}
 
 %build
-%if %{with python3}
+%if %{with python3} && !(0%{?rhel} && 0%{?rhel} <= 9)
+# sphinx doc build — skipped on el8/el9 where python3.11-sphinx is not packaged
 %make_build -C docs html
 %endif
 
@@ -116,7 +138,11 @@ mkdir py3build/
 # into itself) but we don't mind, so || :
 cp -R * py3build/ || :
 pushd py3build
-%configure --enable-shared --with-apxs=%{_httpd_apxs} --with-python=%{python3}
+# Use the explicit versioned binary — on el8 %{python3} resolves to
+# /usr/libexec/platform-python (3.6) which is below the 3.10 floor;
+# /usr/bin/python%{python3_pkgversion} is correct on all platforms:
+# el8/el9 → python3.11, el10/Fedora → python3.
+%configure --enable-shared --with-apxs=%{_httpd_apxs} --with-python=/usr/bin/python%{python3_pkgversion}
 %make_build
 %py3_build
 popd
@@ -181,7 +207,21 @@ ln -s %{_bindir}/mod_wsgi-express-2 %{buildroot}%{_bindir}/mod_wsgi-express
 %endif
 
 %changelog
-* Sat Jul 05 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.5-1
+* Thu Sep 03 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.6-1
+- Use python3.11 on both el8 and el9 (AppStream); upstream wsgi_python.h
+  requires Python >= 3.10 so platform python3 (3.6/3.9) cannot be used
+- Override %%{__python3} and %%{python3_sitearch} for el8/el9 so that
+  %%py3_build, %%py3_install, and %%files all resolve to python3.11; on
+  el8 python3.11-devel (AppStream) does not ship python3.11-rpm-macros so
+  the platform-python (3.6) macros remain in effect without this override
+- Pass /usr/bin/python%%{python3_pkgversion} to --with-python instead of
+  %%{python3}: on el8 %%{python3} resolves to /usr/libexec/platform-python
+  (3.6) regardless of which python3.11-devel is installed
+- Skip sphinx/babel/pygments/docutils/sphinx_rtd_theme BuildRequires and
+  doc html build on el8/el9 — those packages are only available for the
+  platform python3, not versioned python3.11, on el8/el9
+
+* Sat Jul 05 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.6-1
 - Multi-distro audit: ExclusiveArch already correct (x86_64 aarch64), no
   stray BuildArch lines found
 - openSUSE/SLES diverges on Apache dev package (apache2-devel vs
@@ -196,9 +236,7 @@ ln -s %{_bindir}/mod_wsgi-express-2 %{buildroot}%{_bindir}/mod_wsgi-express
   simple package-name guard
 - python3-devel base name confirmed identical on SUSE; this spec's
   python%%{python3_pkgversion}-devel macro pattern is unaffected
-
-* Sat Jul 05 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.5-1
-- Update to 6.0.5 (Source0 refs/tags/ URL verified 302→200)
+- Update to 6.0.6 (Source0 refs/tags/ URL verified 302→200)
 - Drop Patch1 mod_wsgi-4.5.20-exports.patch (stale, was for 4.5.20)
 - Remove commented-out mv/ln lines in %%install
 
