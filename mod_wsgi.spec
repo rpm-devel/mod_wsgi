@@ -1,10 +1,20 @@
-%{!?_httpd_apxs: %{expand: %%global _httpd_apxs %%{_sbindir}/apxs}}
-
-%{!?_httpd_mmn: %{expand: %%global _httpd_mmn %%(cat %{_includedir}/httpd/.mmn 2>/dev/null || echo 0-0)}}
+%if 0%{?suse_version}
+# SUSE/openSUSE: apache2-devel, apxs2, /etc/apache2/conf.d, %{_libdir}/apache2
+%{!?_httpd_apxs:       %{expand: %%global _httpd_apxs       %%{_sbindir}/apxs2}}
+%{!?_httpd_confdir:    %{expand: %%global _httpd_confdir    %%{_sysconfdir}/apache2/conf.d}}
+%{!?_httpd_modconfdir: %{expand: %%global _httpd_modconfdir %%{_sysconfdir}/apache2/conf.d}}
+%{!?_httpd_moddir:     %{expand: %%global _httpd_moddir     %%{_libdir}/apache2}}
+%global httpd_devel_pkg apache2-devel
+%else
+# RHEL/Fedora: httpd-devel, apxs, /etc/httpd/conf.d, %{_libdir}/httpd/modules
+%{!?_httpd_apxs:       %{expand: %%global _httpd_apxs       %%{_sbindir}/apxs}}
+%{!?_httpd_mmn:        %{expand: %%global _httpd_mmn        %%(cat %%{_includedir}/httpd/.mmn 2>/dev/null || echo 0-0)}}
 %{!?_httpd_confdir:    %{expand: %%global _httpd_confdir    %%{_sysconfdir}/httpd/conf.d}}
 # /etc/httpd/conf.d with httpd < 2.4 and defined as /etc/httpd/conf.modules.d with httpd >= 2.4
 %{!?_httpd_modconfdir: %{expand: %%global _httpd_modconfdir %%{_sysconfdir}/httpd/conf.d}}
-%{!?_httpd_moddir:    %{expand: %%global _httpd_moddir    %%{_libdir}/httpd/modules}}
+%{!?_httpd_moddir:     %{expand: %%global _httpd_moddir     %%{_libdir}/httpd/modules}}
+%global httpd_devel_pkg httpd-devel
+%endif
 
 %bcond_without python3
 %bcond_with python2
@@ -26,7 +36,7 @@ Source0:        https://github.com/GrahamDumpleton/mod_wsgi/archive/refs/tags/%{
 Source1:        wsgi.conf
 Source2:        wsgi-python3.conf
 
-BuildRequires:  httpd-devel
+BuildRequires:  %{httpd_devel_pkg}
 BuildRequires:  gcc
 BuildRequires:  make
 Provides:       mod_wsgi = %{version}-%{release}
@@ -48,7 +58,9 @@ existing WSGI adapters for mod_python or CGI.\
 %if %{with python2}
 %package -n python2-%{name}
 Summary: %summary
+%if ! 0%{?suse_version}
 Requires:       httpd-mmn = %{_httpd_mmn}
+%endif
 BuildRequires:  python2-devel, python2-setuptools
 %{?python_provide:%python_provide python2-%{name}}
 %if 0%{?rhel} && 0%{?rhel} <= 7
@@ -64,7 +76,9 @@ Obsoletes: mod_wsgi < %{version}-%{release}
 %if %{with python3}
 %package -n python%{python3_pkgversion}-%{name}
 Summary:        %summary
+%if ! 0%{?suse_version}
 Requires:       httpd-mmn = %{_httpd_mmn}
+%endif
 # >= 3.10 is a real upstream requirement, not just this org's minimum --
 # src/server/wsgi_python.h #error's on Python < 3.10.0. AlmaLinux 8's
 # platform-python (3.6) and AlmaLinux 9's default python3 (3.9) both
@@ -486,4 +500,3 @@ ln -s %{_bindir}/mod_wsgi-express-2 %{buildroot}%{_bindir}/mod_wsgi-express
 
 * Sun Sep 30 2007 James Bowes <jbowes@redhat.com> 1.0-1
 - Initial packaging for Fedora
-
