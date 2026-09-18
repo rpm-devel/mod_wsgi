@@ -221,7 +221,7 @@ ln -s %{_bindir}/mod_wsgi-express-2 %{buildroot}%{_bindir}/mod_wsgi-express
   doc html build on el8/el9 — those packages are only available for the
   platform python3, not versioned python3.11, on el8/el9
 
-* Sat Jul 05 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.6-1
+* Sun Jul 05 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.6-1
 - Multi-distro audit: ExclusiveArch already correct (x86_64 aarch64), no
   stray BuildArch lines found
 - openSUSE/SLES diverges on Apache dev package (apache2-devel vs
@@ -240,7 +240,7 @@ ln -s %{_bindir}/mod_wsgi-express-2 %{buildroot}%{_bindir}/mod_wsgi-express
 - Drop Patch1 mod_wsgi-4.5.20-exports.patch (stale, was for 4.5.20)
 - Remove commented-out mv/ln lines in %%install
 
-* Thu Jul 03 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 5.0.2-1
+* Fri Jul 03 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 5.0.2-1
 - SPDX: ASL 2.0 → Apache-2.0; add ExclusiveArch: x86_64 aarch64
 
 * Fri May 22 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 5.0.2-1
