@@ -1,10 +1,16 @@
 %if 0%{?suse_version}
 # SUSE/openSUSE: apache2-devel, apxs2, /etc/apache2/conf.d, %{_libdir}/apache2
+%if 0%{?suse_version} >= 1600
+%{!?_httpd_apxs:       %{expand: %%global _httpd_apxs       %%{_bindir}/apxs}}
+%else
 %{!?_httpd_apxs:       %{expand: %%global _httpd_apxs       %%{_sbindir}/apxs2}}
+%endif
 %{!?_httpd_confdir:    %{expand: %%global _httpd_confdir    %%{_sysconfdir}/apache2/conf.d}}
 %{!?_httpd_modconfdir: %{expand: %%global _httpd_modconfdir %%{_sysconfdir}/apache2/conf.d}}
 %{!?_httpd_moddir:     %{expand: %%global _httpd_moddir     %%{_libdir}/apache2}}
 %global httpd_devel_pkg apache2-devel
+%global httpd_pkg apache2
+%global python3_pkgversion 3
 %else
 # RHEL/Fedora: httpd-devel, apxs, /etc/httpd/conf.d, %{_libdir}/httpd/modules
 %{!?_httpd_apxs:       %{expand: %%global _httpd_apxs       %%{_sbindir}/apxs}}
@@ -14,6 +20,7 @@
 %{!?_httpd_modconfdir: %{expand: %%global _httpd_modconfdir %%{_sysconfdir}/httpd/conf.d}}
 %{!?_httpd_moddir:     %{expand: %%global _httpd_moddir     %%{_libdir}/httpd/modules}}
 %global httpd_devel_pkg httpd-devel
+%global httpd_pkg httpd
 %endif
 
 %bcond_without python3
@@ -37,11 +44,16 @@
 
 Name:           mod_wsgi
 Version:        6.0.6
-Release:        1%{?dist}
+Release:        4%{?dist}
 Summary:        A WSGI interface for Python web applications in Apache
 License:        Apache-2.0
 URL:            https://modwsgi.readthedocs.io/
 ExclusiveArch:  x86_64 aarch64
+# Upstream requires Python 3.10 or newer. EL7 does not provide a supported
+# Python 3 development stack, so fail clearly instead of a dependency error.
+%if 0%{?rhel} == 7
+%{error:mod_wsgi 6.0.6 requires Python >= 3.10; EL7 does not provide it}
+%endif
 # Upstream switched from bare-version tags (e.g. "6.0.5") to prefixed
 # tags (e.g. "mod_wsgi-6.0.6") after 6.0.5 -- the old Source0 404s.
 # GitHub's archive naming for a "mod_wsgi-6.0.6" tag on the "mod_wsgi"
@@ -72,7 +84,9 @@ existing WSGI adapters for mod_python or CGI.\
 %if %{with python2}
 %package -n python2-%{name}
 Summary: %summary
-%if ! 0%{?suse_version}
+%if 0%{?suse_version}
+Requires:       %{httpd_pkg}
+%else
 Requires:       httpd-mmn = %{_httpd_mmn}
 %endif
 BuildRequires:  python2-devel, python2-setuptools
@@ -90,7 +104,9 @@ Obsoletes: mod_wsgi < %{version}-%{release}
 %if %{with python3}
 %package -n python%{python3_pkgversion}-%{name}
 Summary:        %summary
-%if ! 0%{?suse_version}
+%if 0%{?suse_version}
+Requires:       %{httpd_pkg}
+%else
 Requires:       httpd-mmn = %{_httpd_mmn}
 %endif
 # >= 3.10 is a real upstream requirement, not just this org's minimum --
@@ -101,10 +117,9 @@ Requires:       httpd-mmn = %{_httpd_mmn}
 # fatal error.
 BuildRequires:  python%{python3_pkgversion}-devel >= 3.10
 BuildRequires:  python%{python3_pkgversion}-setuptools
-# sphinx and its friends (babel, pygments, docutils, sphinx_rtd_theme) are only
-# packaged for the platform python3 on el8/el9 — the versioned python3.11-sphinx
-# etc. packages do not exist. Skip docs on el8/el9; build them on el10+ and Fedora.
-%if !(0%{?rhel} && 0%{?rhel} <= 9)
+# Sphinx dependencies are unavailable for the selected Python on EL8/EL9 and
+# use distro-specific names on SUSE. Documentation is not included in the RPM.
+%if !(0%{?rhel} && 0%{?rhel} <= 9) && !0%{?suse_version}
 BuildRequires:  python%{python3_pkgversion}-sphinx, python%{python3_pkgversion}-sphinx_rtd_theme
 BuildRequires:  python%{python3_pkgversion}-babel python%{python3_pkgversion}-pygments python%{python3_pkgversion}-docutils
 %endif
@@ -124,8 +139,9 @@ Obsoletes: mod_wsgi < %{version}-%{release}
 : Python2=%{with python2} Python3=%{with python3}
 
 %build
-%if %{with python3} && !(0%{?rhel} && 0%{?rhel} <= 9)
-# sphinx doc build — skipped on el8/el9 where python3.11-sphinx is not packaged
+%if %{with python3} && !(0%{?rhel} && 0%{?rhel} <= 9) && !0%{?suse_version}
+# Sphinx docs are skipped on EL8/EL9 and SUSE because matching Python docs
+# dependencies are unavailable or use a distro-specific flavor name.
 %make_build -C docs html
 %endif
 
@@ -159,10 +175,12 @@ popd
 %if %{with python3}
 pushd py3build
 %make_install LIBEXECDIR=%{_httpd_moddir}
+mv %{buildroot}%{_httpd_moddir}/mod_wsgi.so %{buildroot}%{_httpd_moddir}/mod_wsgi_python3.so
 
 install -d -m 755 %{buildroot}%{_httpd_modconfdir}
 # httpd >= 2.4.x
-install -p -m 644 %{SOURCE2} %{buildroot}%{_httpd_modconfdir}/10-wsgi-python3.conf
+sed 's|modules/mod_wsgi_python3.so|%{_httpd_moddir}/mod_wsgi_python3.so|' %{SOURCE2} > wsgi-python3.conf
+install -p -m 644 wsgi-python3.conf %{buildroot}%{_httpd_modconfdir}/10-wsgi-python3.conf
 
 %py3_install
 mv %{buildroot}%{_bindir}/mod_wsgi-express{,-3}
@@ -176,7 +194,8 @@ popd
 
 install -d -m 755 %{buildroot}%{_httpd_modconfdir}
 # httpd >= 2.4.x
-install -p -m 644 %{SOURCE1} %{buildroot}%{_httpd_modconfdir}/10-wsgi.conf
+sed 's|modules/mod_wsgi.so|%{_httpd_moddir}/mod_wsgi.so|' %{SOURCE1} > wsgi.conf
+install -p -m 644 wsgi.conf %{buildroot}%{_httpd_modconfdir}/10-wsgi.conf
 
 %py2_install
 mv %{buildroot}%{_bindir}/mod_wsgi-express{,-2}
@@ -200,13 +219,25 @@ ln -s %{_bindir}/mod_wsgi-express-2 %{buildroot}%{_bindir}/mod_wsgi-express
 %license LICENSE
 %doc CREDITS.rst README.rst
 %config(noreplace) %{_httpd_modconfdir}/*wsgi-python3.conf
-%{_httpd_moddir}/mod_wsgi.so
+%{_httpd_moddir}/mod_wsgi_python3.so
 %{python3_sitearch}/mod_wsgi-*.egg-info
 %{python3_sitearch}/mod_wsgi
 %{_bindir}/mod_wsgi-express-3
 %endif
 
 %changelog
+* Thu Oct 01 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.6-4
+- Make the Python 3.10 minimum explicit for unsupported EL7 targets
+
+* Tue Sep 29 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.6-3
+- Use the Leap 16 and Tumbleweed apxs path and rename the Python 3 module
+
+* Mon Sep 28 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.6-2
+- Add SUSE Python naming and Apache runtime dependency; use absolute module
+  paths in distro-specific configuration
+- Skip unshipped optional Sphinx documentation dependencies on SUSE
+- Package the Python 3 Apache module as mod_wsgi_python3.so
+
 * Thu Sep 03 2026 CasjaysDev <rpm-devel@casjaysdev.pro> - 6.0.6-1
 - Use python3.11 on both el8 and el9 (AppStream); upstream wsgi_python.h
   requires Python >= 3.10 so platform python3 (3.6/3.9) cannot be used
